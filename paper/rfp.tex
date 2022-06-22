@@ -1,0 +1,308 @@
+\documentclass{article}
+\begin{document}
+\title{Reactive Functional Programming \\
+{\Large Reversing the Polarity of the Neutron Flow} \\
+{\large For Fun and Profit} }
+\author{Brian Hurt \\
+CTO and Chief Architect \\
+Chatwisely}
+
+\maketitle
+
+\begin{abstract}
+An abstract goes here.
+\end{abstract}
+
+\section{An Introduction to Functional Reactive Programming}
+
+More stuff goes here.
+
+\section{The Unfulfilled Promise of FRP}
+
+A common problem all WebUI frameworks in all languages have to deal with
+is that modifying the DOM is expensive.  The standard solution is to
+use a virtual DOM.  The virtual DOM is made up of plain old Javascript
+objects, and is thus fast and cheap to create.  The framework user
+supplies a function with a type \verb|ProgramState -> VirtualDOM|, which
+is called whenever the program state is changed.  The newly created
+virtual DOM is the compared to the current DOM, and whatever changes
+needed are made. keeping the changes as minimal as possible.  It is then
+just a ``simple matter of programming''\footnote{If this phrase does not
+fill you with dread, you haven't been in the industry long} to optimize
+the process.  You see this pattern with javascript frameworks like react
+and angular, with Haskell frameworks like Shapdoinkle, and even with
+non-web frameworks like Flutter.
+
+The problem with this approach is that creating the virtual DOM and
+comparing it to the real DOM is always going to be a lot of work.  Most
+of which is unnecessary- especially if all you are doing is changing
+an icom from \verb|bell-outline| to \verb|bell-filled| and adding a
+\verb|style="color: red;"| attribute.
+
+The promise of FRP is that we can skip the whole virtual DOM.  Instead,
+the program state is distributed out to the widgets via events and
+behaviors, like water through irrigation canals.  Even with the inherent
+performance disdvatange that comes with cross compiling from a radically
+different language FRP should have a significant performance advantage.
+
+And yet, FRP does not fulfill this promise.  FRP has earned a reputation
+for being slow.  It is past time to ask why.
+
+\section{The Problem with FRP}
+
+Let's consider the following situation: we start with an \verb|Event a|.
+We then \verb|fmap| it to create an \verb|Event b|.  We now have two
+separate objects in memory, \verb|Event a| and \verb|Event b|, and can
+ask what references these objects have.
+
+Now, obviously, \verb|Event b| needs to contain a reference to
+\verb|Event a|.  We do not want the garbage collector to free
+\verb|Event a| before \verb|Event b| is freed.  At the same time, the
+information (values) flow from \verb|Event a| to \verb|Event b|- when
+\verb|Event a| fires, the system needs to apply the function passed to
+\verb|fmap| and fire \verb|Event b|.  So \verb|Event a| needs a
+reference to \verb|Event b|.  Pictorially, we have:
+
+\begin{figure}[h]
+\setlength{\unitlength}{0.14in}
+\centering
+\begin{picture}(24,5)
+\put(1,1){\framebox(5,3){\texttt Event a}}
+\put(18,1){\framebox(5,3){\texttt Event b}}
+\put(10.25,3.5){ownership}
+\put(10,1){information}
+\thicklines
+\put(6,1.75){\vector(1,0){11.9}}
+\put(18,3.25){\vector(-1,0){11.9}}
+\end{picture}
+\end{figure}
+
+Now, a naive implementation that used normal ("strong") references would
+end up not allowing either event to be collected until all events are
+collected.  This is a recipe for galloping memory leaks and degrading
+performance.  The normal solution to this is to make one of the
+references (generally, the reference \verb|Event a| holds to
+\verb|Event b|) a weak reference that does not prevent garbage collection.
+
+There is a problem with using weak references in events.  The runtime
+implementors assume, generally correctly, that weak references will not
+be common, and not be critical for performance.  Indeed, javascript (a
+very important target for most FRP systems) doesn't directly support
+weak references at all, requiring other implementations with even
+greater complexity and cost.  Given the ubuiquity of events in FRP
+programming, this rapidly becomes a critical problem.
+
+\section{Introducing Triggers}
+
+The problem is that reference that \verb|Event a| needs to hold to
+\verb|Event b|.  If only we could reverse the flow of information, so
+that our picture looked like this:
+
+\begin{figure}[h]
+\setlength{\unitlength}{0.14in}
+\centering
+\begin{picture}(24,5)
+\put(1,1){\framebox(5,3){\texttt Event a}}
+\put(18,1){\framebox(5,3){\texttt Event b}}
+\put(10.25,3.5){ownership}
+\put(10,1){information}
+\thicklines
+\put(18,1.75){\vector(-1,0){11.9}}
+\put(18,3.25){\vector(-1,0){11.9}}
+\end{picture}
+\end{figure}
+
+Then we wouldn't need weak references at all.  \verb|Event b| would
+simply hold a normal ("strong") reference to \verb|Event a|, and 
+\verb|Event a| wouldn't hold a reference of any sort to \verb|Event b|.
+
+But then these are no longer events we are talking.  Instead of
+producing values when things happen, they consume values.  They are
+co-events, the contravariant version of events.  We call co-events
+triggers.
+ 
+The key function of Triggers is \verb|trigger|:
+
+\begin{verbatim}
+    trigger :: Trigger m a -> a -> m ()
+\end{verbatim}
+
+The \verb|trigger| function fires the trigger with a given value.  We
+parameterize over the monad the trigger fires in to allow supporting
+different implementations.  In a multi-threaded environment, we might
+choose the STM monad\footnote{Actually, a transformer stack on top of
+STM, for various reasons}.  In an environment where we are guaranteed to
+be single threaded, such as when we are cross compiling to javascript,
+it might be just IO.
+
+To implement Triggers, we consider the simplest possible implementation,
+a newtype:
+
+\begin{verbatim}
+    newtype Trigger m a = Trigger { trigger :: a -> m () }
+\end{verbatim}
+
+This is an ernormous simplification over the implementations of
+classical FRP events.  One is inclined to respond ``It can't possibly be
+that simple!''  But as we shall see, this implementation is actually
+sufficient.  
+
+With the simple implementation of triggers, we might ask if behaviors
+can also be simplified.  It turns out they can.  The key function of
+behaviors is \verb|sample|:
+
+\begin{verbatim}
+    sample :: Behavior m a -> m a
+\end{verbatim}
+
+This implies the implementation:
+
+\begin{verbatim}
+    newtype Behavior m a = Behavior { sample :: m a }
+\end{verbatim}
+
+\section{Working with Triggers}
+
+Switching to Triggers from Events is nearly mechanical:
+
+\begin{itemize}
+\item If a function takes an Event as an input, it now returns a
+Trigger.
+\item If a function returns an Event, it now takes a Trigger.
+\end{itemize}
+
+Some examples of how this works.
+
+\subsection{Example: hold}
+
+Consider the function \verb|hold|\footnote{Simplified to keep irrelevant
+details from obscuring the point}:
+
+\begin{verbatim}
+    hold :: a -> Event m a -> IO (Behavior m a)
+\end{verbatim}
+
+This function creates a behavior given an initial value and an event.
+Every time the event fires, the behavior is given a new value.  As the
+Event is an input, we replace it with a Trigger as an output:
+
+\begin{verbatim}
+    hold :: a -> IO (Behavior m a, Trigger m a)
+\end{verbatim}
+
+Here, when the Trigger is triggered, the value supplied becomes the
+behavior's new state.  This implies that what we are doing here is just
+creating a variable of the right type.  Sampling the behavior is just
+reading the variable, and triggering the trigger with a new value just
+writes the variables.  Wrapping things up in a typeclass gives us:
+
+\begin{verbatim}
+
+    class MonadHold m where
+        hold :: a -> IO (Behavior m a, Trigger m a)
+
+    -- For known single-threaded environments, like when we're
+    -- cross-compiling to Javascript, we use IO and IORefs.
+    instance MonadHold IO where
+        hold init = do
+            var <- newIORef init
+            pure (Behavior (readIORef var),
+                    Trigger (writeIORef var))
+
+    -- For multi-threaded environments we use STM and TVars
+    instance MonadHold STM where
+        hold init = do
+            var <- newTVarIO init
+            pure (Behavior (readTVar var),
+                    Trigger (writeTVar var))
+
+\end{verbatim}
+
+The actual implementation is going to be somewhat more complicated, as
+we want to admit having monad transformer stacks on top of our base
+\verb|IO| and \verb|STM| monads.  But not much more complicated.
+
+\section{Running Triggers}
+
+We need a function to run triggers:
+
+\begin{verbatim}
+
+    class RunTrigger m where
+        runTrigger :: m () -> IO ()
+
+    instance RunTrigger STM where
+        runTrigger = atomically
+
+    instance RunTrigger IO where
+        runTrigger = id
+
+\end{verbatim}
+
+With our simple definition of what a Trigger (and Behavior) are, we can
+also have a simple execution model.  This also bypasses the need to
+define when does an event stop firing.  There are no more references to
+poorly defined and implementation-specific 'animation frames' or the
+similar.  A trigger has finished executing when the \verb|runTrigger|
+function returns.
+
+There is a temptation to define \verb|runTrigger| to have the more
+general type \verb|m a -> IO a|.  But this eliminates an interesting
+optimization opporutinity.
+
+One common situation with FRP is wanting to run the same code on both
+the frontend and the backend.  This is so the backend can prerender
+the HTML.  In this case, we can use the fact that \verb|Proxy| is monad
+to our advantage.  
+
+The fact that \verb|Proxy| is a monad is one of those things that, when
+you first notice them, you tend to dismiss as technically correct but
+essentially silly.  But once you realize how and why they are useful
+they suddenly become brilliant.
+
+We can define implementations of all of our type classes for Proxy:
+
+\begin{verbatim}
+
+    instance MonadHold STM where
+        hold _init = do
+            pure (Behavior Proxy, Trigger (const Proxy))
+
+    instance RunTrigger Proxy where
+        runTrigger Proxy = pure ()
+
+\end{verbatim}
+
+These ``trivial'' implementations just side step doing everything.  But
+this is exactly the behavior we want when we're doing a prerender.
+
+We can even define a type class to let us detect that we are doing a
+prerender, to have some DOM only generated in a prerender (such as a
+"please wait while we're loading" popup, or spinners), or only generated
+when not in a prerender:
+
+\begin{verbatim}
+
+    class IsPrerender m where
+        isPrerender :: Proxy m -> Bool
+
+    instance IsPrerender Proxy where
+        isPrerender Proxy = True
+
+    instance IsPrerender IO where
+        isPrerender Proxy = False
+
+    instance IsPrerender STM where
+        isPrerender Proxy = False
+
+    instance (IsPrerender m, MonadTrans t)
+        => IsPrerender (t m) where
+            isPrerender Proxy =
+                isPrerender (Proxy :: Proxy m)
+
+\end{verbatim}
+
+
+
+\end{document}
+
