@@ -21,3 +21,16 @@ cabal.project.local
 cabal.project.local~
 .HTF/
 .ghc.environment.*
+
+# VIM editor files
+*.sw?
+
+# Latex files
+*.dvi
+*.pdf
+*.log
+
+
+# Stack files
+stack.yaml.lock
+
