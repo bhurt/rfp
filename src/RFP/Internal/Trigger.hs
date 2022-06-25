@@ -12,12 +12,12 @@ module RFP.Internal.Trigger (
     import qualified Data.Functor.Contravariant.Divisible as Div
     import           Data.Void                            (absurd)
 
-    newtype Trigger t a = Trigger { trigger :: a -> t () }
+    newtype Trigger m a = Trigger { trigger :: a -> m () }
 
-    instance CF.Contravariant (Trigger t) where
-        contramap f t = Trigger $ trigger t . f
+    instance CF.Contravariant (Trigger m) where
+        contramap f m = Trigger $ trigger m . f
 
-    instance Applicative t => Div.Divisible (Trigger t) where
+    instance Applicative m => Div.Divisible (Trigger m) where
         divide f trigB trigC = Trigger go
             where
                 go a =
@@ -29,7 +29,7 @@ module RFP.Internal.Trigger (
 
         conquer = Trigger $ const (pure ())
 
-    instance Applicative t => Div.Decidable (Trigger t) where
+    instance Applicative m => Div.Decidable (Trigger m) where
         lose f = Trigger $ absurd . f
         choose f trigB trigC = Trigger go
             where
@@ -39,6 +39,12 @@ module RFP.Internal.Trigger (
                         Right c -> trigger trigC c
 
 
-    discardTrigger :: Applicative t => Trigger t a
+    -- | A trigger that does nothing when triggered.
+    --
+    -- Useful for situations where you need to have a trigger, but
+    -- don't want to actually do anything in the trigger (for example,
+    -- when you're doing a divide or a choose, but don't care about
+    -- one branch).
+    discardTrigger :: Applicative m => Trigger m a
     discardTrigger = Trigger $ const (pure ())
 

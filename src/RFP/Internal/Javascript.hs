@@ -1,15 +1,20 @@
+{-# LANGUAGE KindSignatures      #-}
 {-# LANGUAGE Safe                #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeOperators       #-}
 
 module RFP.Internal.Javascript(
-    Javascript
+    Javascript,
+    isJavascript
 ) where
 
     import           Control.Applicative    (Alternative (..), Applicative (..))
     import           Control.Monad.IO.Class
     import           Control.Monad.Reader
     import           Data.IORef
+    import           Data.Kind              (Type)
     import           Data.Semigroup         (Semigroup (..))
+    import           Data.Typeable
     import           RFP.Internal.Behavior
     import           RFP.Internal.Hold
     import           RFP.Internal.PerformIO
@@ -80,4 +85,9 @@ module RFP.Internal.Javascript(
                                         lift $ do
                                             ios <- readIORef var
                                             writeIORef var (act : ios)
+
+    isJavascript :: forall (m :: Type -> Type) . Typeable m => Proxy m -> Bool
+    isJavascript Proxy = case eqT :: Maybe (m :~: Javascript) of
+                            Just _  -> True
+                            Nothing -> False
 

@@ -1,15 +1,20 @@
+{-# LANGUAGE KindSignatures      #-}
 {-# LANGUAGE Safe                #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeOperators       #-}
 
 module RFP.Internal.Threaded(
-    Threaded
+    Threaded,
+    isThreaded
 ) where
 
     import           Control.Applicative    (Alternative (..), Applicative (..))
     import           Control.Concurrent.STM
     import           Control.Monad.IO.Class
     import           Control.Monad.Reader
+    import           Data.Kind              (Type)
     import           Data.Semigroup         (Semigroup (..))
+    import           Data.Typeable
     import           RFP.Internal.Behavior
     import           RFP.Internal.Hold
     import           RFP.Internal.PerformIO
@@ -82,4 +87,9 @@ module RFP.Internal.Threaded(
                                         lift $ do
                                             ios <- readTVar var
                                             writeTVar var (act : ios)
+
+    isThreaded :: forall (m :: Type -> Type) . Typeable m => Proxy m -> Bool
+    isThreaded Proxy = case eqT :: Maybe (m :~: Threaded) of
+                            Just _  -> True
+                            Nothing -> False
 

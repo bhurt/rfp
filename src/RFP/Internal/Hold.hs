@@ -12,14 +12,17 @@ module RFP.Internal.Hold (
     import           RFP.Internal.Behavior
     import           RFP.Internal.Trigger
 
-    class Hold t where
-        hold :: forall m a . MonadIO m => a -> m (Behavior t a, Trigger t a)
+    class Hold m where
+        hold :: forall dom a .
+                    MonadIO dom
+                    => a
+                    -> dom (Behavior m a, Trigger m a)
 
-    updater :: forall t m a . (Monad t, Hold t, MonadIO m)
-                => a -> m (Behavior t a, Trigger t (a -> a))
+    updater :: forall m dom a . (Monad m, Hold m, MonadIO dom)
+                => a -> dom (Behavior m a, Trigger m (a -> a))
     updater x = do
         (beh, trig) <- hold x
-        let go :: (a -> a) -> t ()
+        let go :: (a -> a) -> m ()
             go f = do
                 a <- sample beh
                 trigger trig (f a)

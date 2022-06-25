@@ -72,8 +72,8 @@ module RFP.Internal.Static(
     instance PerformIO Static where
         performIO = Trigger $ const (Static Proxy)
 
-    isStatic :: forall (t :: Type -> Type) . Typeable t => Proxy t -> Bool
-    isStatic Proxy = case eqT :: Maybe (t :~: Static) of
+    isStatic :: forall (m :: Type -> Type) . Typeable m => Proxy m -> Bool
+    isStatic Proxy = case eqT :: Maybe (m :~: Static) of
                             Just _  -> True
                             Nothing -> False
 

@@ -7,6 +7,6 @@ module RFP.Internal.Runnable(
 
     import           Control.Monad.IO.Class (MonadIO)
 
-    class Runnable f where
-        runMoment :: forall m . MonadIO m => f () -> m ()
+    class Runnable m where
+        runMoment :: forall dom . MonadIO dom => m () -> dom ()
 

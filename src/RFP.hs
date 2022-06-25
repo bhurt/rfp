@@ -11,12 +11,14 @@ module RFP (
     Hold(..),
     PerformIO(..),
 
-    -- * Models
+    -- * Moments
     Threaded,
     Javascript,
     Static,
 
     -- ** Testing Models
+    isThreaded,
+    isJavascript,
     isStatic,
 
     -- * Other functions

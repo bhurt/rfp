@@ -14,14 +14,14 @@ module RFP.Internal.PerformIO (
     import           RFP.Internal.Runnable
     import           RFP.Internal.Trigger
 
-    class PerformIO t where
-        performIO :: Trigger t (IO ())
+    class PerformIO m where
+        performIO :: Trigger m (IO ())
 
-    performTrigger :: forall a t .
-                        (Runnable t
-                        , PerformIO t)
-                        => Trigger t a
-                        -> Trigger t (IO a)
+    performTrigger :: forall a m .
+                        (Runnable m
+                        , PerformIO m)
+                        => Trigger m a
+                        -> Trigger m (IO a)
     performTrigger fini = contramap go performIO
         where
             go :: IO a -> IO ()
@@ -30,19 +30,19 @@ module RFP.Internal.PerformIO (
                 runMoment $ trigger fini a
             {-# INLINE go #-}
 
-    performTriggerOnce :: forall t m .
-                            (Monad t
-                            , Runnable t
-                            , Hold t
-                            , PerformIO t
-                            , MonadIO m)
-                            => Trigger t ()
-                            -> m (Trigger t (IO ()))
+    performTriggerOnce :: forall m dom .
+                            (Monad m
+                            , Runnable m
+                            , Hold m
+                            , PerformIO m
+                            , MonadIO dom)
+                            => Trigger m ()
+                            -> dom (Trigger m (IO ()))
     performTriggerOnce fini = do
             (g, upd) <- hold True
             pure . Trigger $ go g upd
         where
-            go :: Behavior t Bool -> Trigger t Bool -> IO () -> t ()
+            go :: Behavior m Bool -> Trigger m Bool -> IO () -> m ()
             go g upd act = do
                 t <- sample g
                 if t
@@ -52,7 +52,7 @@ module RFP.Internal.PerformIO (
                 else
                     pure ()
 
-            wrap :: Trigger t Bool -> IO () -> IO ()
+            wrap :: Trigger m Bool -> IO () -> IO ()
             wrap upd act = do
                 act
                 runMoment $ do

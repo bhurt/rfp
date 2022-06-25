@@ -15,83 +15,83 @@ module RFP.Internal.Behavior (
     import           Data.Semigroup       (Semigroup (..))
     import           RFP.Internal.Trigger
 
-    newtype Behavior t a = Behavior { sample :: t a }
+    newtype Behavior m a = Behavior { sample :: m a }
 
-    instance Functor t => Functor (Behavior t) where
+    instance Functor m => Functor (Behavior m) where
         fmap f =  Behavior . fmap f . sample
         a <$ f = Behavior $ a <$ sample f
 
-    instance Applicative t => Applicative (Behavior t) where
+    instance Applicative m => Applicative (Behavior m) where
         pure = Behavior . pure 
         f <*> g = Behavior $ (sample f) <*> (sample g)
         liftA2 f a b = Behavior $ liftA2 f (sample a) (sample b)
         a *> b = Behavior $ sample a *> sample b
         a <* b = Behavior $ sample a <* sample b
 
-    instance Monad t => Monad (Behavior t) where
+    instance Monad m => Monad (Behavior m) where
         return = pure
         x >>= f = Behavior $ sample x >>= (sample . f)
         (>>) = (*>)
 
-    instance MonadPlus t => MonadPlus (Behavior t) where
+    instance MonadPlus m => MonadPlus (Behavior m) where
         mzero = Behavior mzero
         mplus x y = Behavior $ mplus (sample x) (sample y)
 
-    instance Alternative t => Alternative (Behavior t) where
+    instance Alternative m => Alternative (Behavior m) where
         empty = Behavior empty
         f <|> g = Behavior $ sample f <|> sample g
         some f = Behavior $ some (sample f)
         many f = Behavior $ many (sample f)
 
-    instance MonadZip t => MonadZip (Behavior t) where
+    instance MonadZip m => MonadZip (Behavior m) where
         mzip a b = Behavior $ mzip (sample a) (sample b)
         mzipWith f a b = Behavior $ mzipWith f (sample a) (sample b)
         munzip ab = let (a, b) = munzip (sample ab) in
                         (Behavior a, Behavior b)
 
-    instance MonadFail t => MonadFail (Behavior t) where
+    instance MonadFail m => MonadFail (Behavior m) where
         fail s = Behavior $ fail s
 
-    instance (Applicative t, Semigroup a) => Semigroup (Behavior t a) where
+    instance (Applicative m, Semigroup a) => Semigroup (Behavior m a) where
         a <> b = Behavior $ liftA2 (<>) (sample a) (sample b)
         sconcat xs = Behavior $ sconcat <$> sequenceA (sample <$> xs)
         stimes n x = Behavior $ stimes n <$> sample x
 
-    instance (Applicative t, Monoid a) => Monoid (Behavior t a) where
+    instance (Applicative m, Monoid a) => Monoid (Behavior m a) where
         mempty = Behavior $ pure mempty
         mappend = (<>)
         mconcat xs = Behavior $ mconcat <$> sequenceA (sample <$> xs)
 
-    instance MonadFix t => MonadFix (Behavior t) where
+    instance MonadFix m => MonadFix (Behavior m) where
         mfix f = Behavior $ mfix (sample . f)
 
 
-    attach :: forall t a b .
-                Monad t
-                => Behavior t a
-                -> Trigger t (a, b)
-                -> Trigger t b
+    attach :: forall m a b .
+                Monad m
+                => Behavior m a
+                -> Trigger m (a, b)
+                -> Trigger m b
     attach beha trigab = Trigger go
         where
-            go :: b -> t ()
+            go :: b -> m ()
             go b = do
                 a :: a <- sample beha
                 trigger trigab (a, b)
             {-# INLINE go #-}
 
 
-    gate :: forall t a
-            . Monad t
-            => Behavior t Bool
-            -> Trigger t a
-            -> Trigger t a
-    gate b t = Trigger go
+    gate :: forall m a
+            . Monad m
+            => Behavior m Bool
+            -> Trigger m a
+            -> Trigger m a
+    gate b m = Trigger go
         where
-            go :: a -> t ()
+            go :: a -> m ()
             go a = do
                 x <- sample b
                 if x
-                then trigger t a
+                then trigger m a
                 else pure ()
             {-# INLINE go #-}
 
