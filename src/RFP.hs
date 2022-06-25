@@ -13,12 +13,12 @@ module RFP (
 
     -- * Moments
     Threaded,
-    Javascript,
+    Nonthreaded,
     Static,
 
-    -- ** Testing Models
+    -- ** Testing Moments
     isThreaded,
-    isJavascript,
+    isNonthreaded,
     isStatic,
 
     -- * Other functions
@@ -32,7 +32,7 @@ module RFP (
 
     import           RFP.Internal.Behavior
     import           RFP.Internal.Hold
-    import           RFP.Internal.Javascript
+    import           RFP.Internal.Nonthreaded
     import           RFP.Internal.PerformIO
     import           RFP.Internal.Runnable
     import           RFP.Internal.Static

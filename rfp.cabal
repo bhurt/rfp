@@ -23,7 +23,7 @@ library
   exposed-modules:     RFP
                         , RFP.Internal.Behavior
                         , RFP.Internal.Hold
-                        , RFP.Internal.Javascript
+                        , RFP.Internal.Nonthreaded
                         , RFP.Internal.PerformIO
                         , RFP.Internal.Runnable
                         , RFP.Internal.Static
