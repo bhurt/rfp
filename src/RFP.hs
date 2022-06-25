@@ -14,10 +14,10 @@ module RFP (
     -- * Models
     Threaded,
     Javascript,
-    Prerender,
+    Static,
 
     -- ** Testing Models
-    isPrerender,
+    isStatic,
 
     -- * Other functions
     attach,
@@ -32,8 +32,8 @@ module RFP (
     import           RFP.Internal.Hold
     import           RFP.Internal.Javascript
     import           RFP.Internal.PerformIO
-    import           RFP.Internal.Prerender
     import           RFP.Internal.Runnable
+    import           RFP.Internal.Static
     import           RFP.Internal.Threaded
     import           RFP.Internal.Trigger
 
