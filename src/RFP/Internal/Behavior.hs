@@ -10,6 +10,7 @@ module RFP.Internal.Behavior (
 
     import           Control.Applicative  (Alternative (..), Applicative (..))
     import           Control.Monad        (MonadPlus (..))
+    import           Control.Monad.Fix    (MonadFix (..))
     import           Control.Monad.Zip    (MonadZip (..))
     import           Data.Semigroup       (Semigroup (..))
     import           RFP.Internal.Trigger
@@ -60,6 +61,10 @@ module RFP.Internal.Behavior (
         mempty = Behavior $ pure mempty
         mappend = (<>)
         mconcat xs = Behavior $ mconcat <$> sequenceA (sample <$> xs)
+
+    instance MonadFix t => MonadFix (Behavior t) where
+        mfix f = Behavior $ mfix (sample . f)
+
 
     attach :: forall t a b .
                 Monad t

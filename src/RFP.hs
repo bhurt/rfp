@@ -11,6 +11,14 @@ module RFP (
     Hold(..),
     PerformIO(..),
 
+    -- * Models
+    Threaded,
+    Javascript,
+    Prerender,
+
+    -- ** Testing Models
+    isPrerender,
+
     -- * Other functions
     attach,
     updater,
@@ -22,7 +30,10 @@ module RFP (
 
     import           RFP.Internal.Behavior
     import           RFP.Internal.Hold
+    import           RFP.Internal.Javascript
     import           RFP.Internal.PerformIO
+    import           RFP.Internal.Prerender
     import           RFP.Internal.Runnable
+    import           RFP.Internal.Threaded
     import           RFP.Internal.Trigger
 

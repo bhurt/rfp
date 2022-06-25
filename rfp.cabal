@@ -23,13 +23,16 @@ library
   exposed-modules:     RFP
                         , RFP.Internal.Behavior
                         , RFP.Internal.Hold
+                        , RFP.Internal.Javascript
                         , RFP.Internal.PerformIO
+                        , RFP.Internal.Prerender
                         , RFP.Internal.Runnable
+                        , RFP.Internal.Threaded
                         , RFP.Internal.Trigger
   build-depends:       base >= 4.7 && < 5
                         , contravariant
-                        -- , mtl
-                        -- , stm
+                        , mtl
+                        , stm
   default-language:    Haskell2010
   if flag(devel)
     ghc-options:       -O0
