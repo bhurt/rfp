@@ -21,14 +21,15 @@ Flag Devel
 library
   hs-source-dirs:      src
   exposed-modules:     RFP
-                        , Control.Monad.STM.Class
                         , RFP.Internal.Behavior
+                        , RFP.Internal.Hold
+                        , RFP.Internal.PerformIO
+                        , RFP.Internal.Runnable
                         , RFP.Internal.Trigger
-                        , RFP.Internal.MonadHold
   build-depends:       base >= 4.7 && < 5
                         , contravariant
-                        , mtl
-                        , stm
+                        -- , mtl
+                        -- , stm
   default-language:    Haskell2010
   if flag(devel)
     ghc-options:       -O0
