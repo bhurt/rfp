@@ -46,6 +46,7 @@ module RFP (
     , appendK
     , apply
     , attach
+    , cache
     , discardTrigger
     , filterTrigger
     , gate
