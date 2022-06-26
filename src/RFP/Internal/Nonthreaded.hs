@@ -1,5 +1,4 @@
 {-# LANGUAGE KindSignatures      #-}
-{-# LANGUAGE Safe                #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators       #-}
 
@@ -16,13 +15,15 @@ module RFP.Internal.Nonthreaded(
     import           Data.Semigroup         (Semigroup (..))
     import           Data.Typeable
     import           RFP.Internal.Behavior
+    import           RFP.Internal.GetTime
     import           RFP.Internal.Hold
     import           RFP.Internal.PerformIO
     import           RFP.Internal.Runnable
     import           RFP.Internal.Trigger
+    import           RFP.Internal.Utils
 
     newtype Nonthreaded a =
-        Nonthreaded { getNonthreaded :: ReaderT (IORef [ IO () ]) IO a }
+        Nonthreaded { getNonthreaded :: ReaderT (Env IORef) IO a }
 
     instance Functor Nonthreaded where
         fmap f =  Nonthreaded . fmap f . getNonthreaded
@@ -65,13 +66,16 @@ module RFP.Internal.Nonthreaded(
 
     instance Runnable Nonthreaded where
         runMoment f = liftIO $ do
-            ios :: [ IO () ] <- do
+            nowTime <- getTime
+            acts :: [ IO () ] <- do
                 var :: IORef [ IO () ] <- newIORef []
-                runReaderT (getNonthreaded f) var
+                runReaderT (getNonthreaded f) $ Env {
+                    ios = var,
+                    time = nowTime }
                 readIORef var
-            case ios of
+            case acts of
                 [] -> pure ()
-                _ -> mapM_ id $ reverse ios
+                _ -> mapM_ id $ reverse acts
 
     instance Hold Nonthreaded where
         hold x = liftIO $ do
@@ -80,11 +84,17 @@ module RFP.Internal.Nonthreaded(
                     Trigger (Nonthreaded . lift . writeIORef var))
 
     instance PerformIO Nonthreaded where
-        performIO = Trigger $ \act -> Nonthreaded $ do
-                                        var <- ask
-                                        lift $ do
-                                            ios <- readIORef var
-                                            writeIORef var (act : ios)
+        performIO =
+            Trigger $
+                \act ->
+                    Nonthreaded $ do
+                        var <- ios <$> ask
+                        lift $ do
+                            acts <- readIORef var
+                            writeIORef var (act : acts)
+
+    instance GetTime Nonthreaded where
+        currentTime = Behavior $ Nonthreaded $ time <$> ask
 
     isNonthreaded :: forall (m :: Type -> Type) . Typeable m => Proxy m -> Bool
     isNonthreaded Proxy = case eqT :: Maybe (m :~: Nonthreaded) of

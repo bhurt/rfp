@@ -122,3 +122,4 @@ module RFP.Internal.Behavior (
                 a <- sample beh
                 runKleisli k a
 
+

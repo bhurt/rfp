@@ -1,4 +1,3 @@
-{-# LANGUAGE Safe                #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 -- |
@@ -26,6 +25,7 @@ module RFP (
     Runnable(..),
     Hold(..),
     PerformIO(..),
+    GetTime(..),
 
     -- * Moments
     --
@@ -43,6 +43,7 @@ module RFP (
     isStatic
 
     -- * Other functions
+    , accumT
     , appendK
     , apply
     , attach
@@ -59,6 +60,7 @@ module RFP (
 ) where
 
     import           RFP.Internal.Behavior
+    import           RFP.Internal.GetTime
     import           RFP.Internal.Hold
     import           RFP.Internal.Nonthreaded
     import           RFP.Internal.PerformIO

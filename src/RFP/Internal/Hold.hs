@@ -6,7 +6,8 @@
 module RFP.Internal.Hold (
     Hold(..),
     updater,
-    cache
+    cache,
+    accumT
 ) where
 
     import           Control.Monad.IO.Class (MonadIO)
@@ -46,4 +47,22 @@ module RFP.Internal.Hold (
             go upd = \ () -> do
                 y <- sample src
                 trigger upd y
+
+    accumT :: forall m dom a .
+                (Monad m
+                , Hold m
+                , MonadIO dom)
+                => a
+                -> Trigger m a
+                -> dom (Trigger m (a -> a))
+    accumT x trig = do
+            (beh, upd) <- hold x
+            pure . Trigger $ go beh upd
+        where
+            go :: Behavior m a -> Trigger m a -> (a -> a) -> m ()
+            go beh upd = \f -> do
+                a' <- sample beh
+                let a = f a'
+                trigger upd a
+                trigger trig a
 

@@ -1,5 +1,4 @@
 {-# LANGUAGE KindSignatures      #-}
-{-# LANGUAGE Safe                #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators       #-}
 
@@ -16,13 +15,15 @@ module RFP.Internal.Threaded(
     import           Data.Semigroup         (Semigroup (..))
     import           Data.Typeable
     import           RFP.Internal.Behavior
+    import           RFP.Internal.GetTime
     import           RFP.Internal.Hold
     import           RFP.Internal.PerformIO
     import           RFP.Internal.Runnable
     import           RFP.Internal.Trigger
+    import           RFP.Internal.Utils
 
     newtype Threaded a =
-        Threaded { getThreaded :: ReaderT (TVar [ IO () ]) STM a }
+        Threaded { getThreaded :: ReaderT (Env TVar) STM a }
 
     instance Functor Threaded where
         fmap f =  Threaded . fmap f . getThreaded
@@ -65,15 +66,18 @@ module RFP.Internal.Threaded(
 
     instance Runnable Threaded where
         runMoment f = liftIO $ do
+            nowtime <- getTime
             let go :: STM [ IO () ]
                 go = do
                         var :: TVar [ IO () ] <- newTVar []
-                        runReaderT (getThreaded f) var
+                        runReaderT (getThreaded f) $ Env {
+                            ios = var,
+                            time = nowtime }
                         readTVar var
-            ios :: [ IO () ] <- atomically go
-            case ios of
+            acts :: [ IO () ] <- atomically go
+            case acts of
                 [] -> pure ()
-                _ -> mapM_ id $ reverse ios
+                _ -> mapM_ id $ reverse acts
 
     instance Hold Threaded where
         hold x = liftIO $ do
@@ -83,10 +87,13 @@ module RFP.Internal.Threaded(
 
     instance PerformIO Threaded where
         performIO = Trigger $ \act -> Threaded $ do
-                                        var <- ask
+                                        var <- ios <$> ask
                                         lift $ do
-                                            ios <- readTVar var
-                                            writeTVar var (act : ios)
+                                            acts <- readTVar var
+                                            writeTVar var (act : acts)
+
+    instance GetTime Threaded where
+        currentTime = Behavior (Threaded (time <$> ask))
 
     isThreaded :: forall (m :: Type -> Type) . Typeable m => Proxy m -> Bool
     isThreaded Proxy = case eqT :: Maybe (m :~: Threaded) of
