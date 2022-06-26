@@ -6,10 +6,12 @@ module RFP.Internal.Behavior (
     Behavior(..),
     attach,
     gate,
-    apply
+    apply,
+    appendK
 ) where
 
     import           Control.Applicative  (Alternative (..), Applicative (..))
+    import           Control.Arrow        (Kleisli (..))
     import           Control.Monad        (MonadPlus (..))
     import           Control.Monad.Fix    (MonadFix (..))
     import           Control.Monad.Zip    (MonadZip (..))
@@ -108,4 +110,15 @@ module RFP.Internal.Behavior (
                 f <- sample beh
                 trigger out (f a)
 
+    appendK :: forall m a b .
+                Monad m
+                => Behavior m a
+                -> Kleisli m a b
+                -> Behavior m b
+    appendK beh k = Behavior go
+        where
+            go :: m b
+            go = do
+                a <- sample beh
+                runKleisli k a
 

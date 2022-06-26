@@ -43,6 +43,7 @@ module RFP (
     isStatic
 
     -- * Other functions
+    , appendK
     , apply
     , attach
     , discardTrigger
@@ -50,6 +51,7 @@ module RFP (
     , gate
     , performTrigger
     , performTriggerOnce
+    , prependK
     , triggerBoth
     , updater
 

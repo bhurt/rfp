@@ -6,10 +6,12 @@ module RFP.Internal.Trigger (
     Trigger(..),
     discardTrigger,
     triggerBoth,
-    filterTrigger
+    filterTrigger,
+    prependK
 ) where
 
     import           Control.Applicative                  (liftA2)
+    import           Control.Arrow                        (Kleisli (..))
     import qualified Data.Functor.Contravariant           as CF
     import qualified Data.Functor.Contravariant.Divisible as Div
     import           Data.Void                            (absurd)
@@ -72,4 +74,13 @@ module RFP.Internal.Trigger (
                             \a -> if (f a)
                                     then trigger trig a
                                     else pure ()
+
+    prependK :: forall m a b . Monad m =>
+                Kleisli m a b -> Trigger m b -> Trigger m a
+    prependK k trig = Trigger go
+        where
+            go :: a -> m ()
+            go a = do
+                b <- runKleisli k a
+                trigger trig b
 
