@@ -5,7 +5,8 @@
 module RFP.Internal.Behavior (
     Behavior(..),
     attach,
-    gate
+    gate,
+    apply
 ) where
 
     import           Control.Applicative  (Alternative (..), Applicative (..))
@@ -94,5 +95,17 @@ module RFP.Internal.Behavior (
                 then trigger m a
                 else pure ()
             {-# INLINE go #-}
+
+    apply :: forall m a b .
+                Monad m
+                => Behavior m (a -> b)
+                -> Trigger m b
+                -> Trigger m a
+    apply beh out = Trigger go
+        where
+            go :: a -> m ()
+            go a = do
+                f <- sample beh
+                trigger out (f a)
 
 

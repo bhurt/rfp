@@ -4,7 +4,9 @@
 
 module RFP.Internal.Trigger (
     Trigger(..),
-    discardTrigger
+    discardTrigger,
+    triggerBoth,
+    filterTrigger
 ) where
 
     import           Control.Applicative                  (liftA2)
@@ -45,6 +47,29 @@ module RFP.Internal.Trigger (
     -- don't want to actually do anything in the trigger (for example,
     -- when you're doing a divide or a choose, but don't care about
     -- one branch).
+    --
     discardTrigger :: Applicative m => Trigger m a
     discardTrigger = Trigger $ const (pure ())
+
+    -- | Combine two triggers.
+    --
+    -- Creates a single combined trigger than triggers both input
+    -- triggers.
+    --
+    triggerBoth :: Applicative m => Trigger m a -> Trigger m a -> Trigger m a
+    triggerBoth trig1 trig2 = Trigger $
+                                \a -> liftA2
+                                        (\ () () -> ())
+                                        (trigger trig1 a)
+                                        (trigger trig2 a)
+
+
+    -- | Filter a trigger.
+    --
+    -- Only fire the input trigger if the function given returns true.
+    filterTrigger :: Applicative m => (a -> Bool) -> Trigger m a -> Trigger m a
+    filterTrigger f trig = Trigger $
+                            \a -> if (f a)
+                                    then trigger trig a
+                                    else pure ()
 

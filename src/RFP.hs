@@ -1,17 +1,38 @@
 {-# LANGUAGE Safe                #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
+-- |
+--  Module:         RFP
+--  Description:    Reactive Functional Programming- FRP with a twist
+--  Copyright:      (c) 2022 Brian Hurt
+--  License:        BSD-3
+--  Maintainer:     bhurt42@gmail.com
+--  Portability:    Safe
+--
+--  Reactive Functional Programming is a variation of Functional
+--  Reactive Programming.  Except we replace events that produce
+--  values with Triggers that consume them.  This allows a much
+--  simpler (and more efficient) implementation.
+--
 module RFP (
     -- * Core types
     Trigger(..),
     Behavior(..),
 
     -- * Core type classes
+    --
+    -- We use typeclasses to allow multiple different implementations.
+    --
     Runnable(..),
     Hold(..),
     PerformIO(..),
 
     -- * Moments
+    --
+    -- A moment is a monad that triggers (and sampling behaviors)
+    -- can execute in.  By default the library supports three different
+    -- types of moments for different situations.
+    --
     Threaded,
     Nonthreaded,
     Static,
@@ -19,15 +40,19 @@ module RFP (
     -- ** Testing Moments
     isThreaded,
     isNonthreaded,
-    isStatic,
+    isStatic
 
     -- * Other functions
-    attach,
-    updater,
-    discardTrigger,
-    gate,
-    performTrigger,
-    performTriggerOnce
+    , apply
+    , attach
+    , discardTrigger
+    , filterTrigger
+    , gate
+    , performTrigger
+    , performTriggerOnce
+    , triggerBoth
+    , updater
+
 ) where
 
     import           RFP.Internal.Behavior
