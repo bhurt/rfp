@@ -57,6 +57,11 @@ module RFP (
     , triggerBoth
     , updater
 
+    -- * Value Notifier
+    , ValueNotifierKey
+    , ValueNotifier(..)
+    , valueNotifier
+
 ) where
 
     import           RFP.Internal.Behavior

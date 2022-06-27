@@ -7,10 +7,16 @@ module RFP.Internal.Hold (
     Hold(..),
     updater,
     cache,
-    accumT
+    accumT,
+    ValueNotifierKey,
+    ValueNotifier(..),
+    valueNotifier
 ) where
 
+    import           Control.Arrow          (Kleisli (..))
     import           Control.Monad.IO.Class (MonadIO)
+    import           Data.IntMap.Strict     (IntMap)
+    import qualified Data.IntMap.Strict     as IntMap
     import           RFP.Internal.Behavior
     import           RFP.Internal.Trigger
 
@@ -30,7 +36,6 @@ module RFP.Internal.Hold (
                 trigger trig (f a)
             {-# INLINE go #-}
         pure (beh, Trigger go)
-
 
     cache :: forall m dom a .
                 (Monad m
@@ -65,4 +70,63 @@ module RFP.Internal.Hold (
                 let a = f a'
                 trigger upd a
                 trigger trig a
+
+    newtype ValueNotifierKey = ValueNotifierKey Int
+
+    data ValueNotifier m a = ValueNotifier {
+        addListener :: Kleisli m (Trigger m a) ValueNotifierKey,
+        removeListener :: Trigger m ValueNotifierKey,
+        notifyListeners :: Trigger m a }
+
+    data ValueNotifierState m a = ValueNotifierState {
+        nextKey :: {-# UNPACK #-} !Int,
+        currTriggers :: IntMap (Trigger m a) }
+
+    valueNotifier :: forall m dom a .
+                        (Monad m
+                        , Hold m
+                        , MonadIO dom)
+                        => dom (ValueNotifier m a)
+    valueNotifier = do
+            (beh, upd) <- hold initialValueNotifierState
+            pure $ ValueNotifier {
+                        addListener = doAdd beh upd,
+                        removeListener = doRem beh upd,
+                        notifyListeners = doNote beh }
+        where
+            initialValueNotifierState :: ValueNotifierState m a
+            initialValueNotifierState = ValueNotifierState {
+                    nextKey = 0,
+                    currTriggers = IntMap.empty
+                }
+
+            doAdd :: Behavior m (ValueNotifierState m a)
+                        -> Trigger m (ValueNotifierState m a)
+                        -> Kleisli m (Trigger m a) ValueNotifierKey
+            doAdd beh upd = Kleisli $ \newTrig -> do
+                st <- sample beh
+                let key = nextKey st
+                    trigs = currTriggers st
+                    trigs2 = IntMap.insert key newTrig trigs
+                    st2 = st {
+                            nextKey = key + 1,
+                            currTriggers = trigs2 }
+                trigger upd st2
+                pure $ ValueNotifierKey key
+
+            doRem :: Behavior m (ValueNotifierState m a)
+                        -> Trigger m (ValueNotifierState m a)
+                        -> Trigger m ValueNotifierKey
+            doRem beh upd = Trigger $ \(ValueNotifierKey key) -> do
+                st <- sample beh
+                let trigs2 = IntMap.delete key (currTriggers st)
+                    st2 = st { currTriggers = trigs2 }
+                trigger upd st2
+
+            doNote :: Behavior m (ValueNotifierState m a)
+                        -> Trigger m a
+            doNote beh = Trigger $ \a -> do
+                trigs <- currTriggers <$> sample beh
+                mapM_ (\t -> trigger t a) $ IntMap.elems trigs
+    
 
