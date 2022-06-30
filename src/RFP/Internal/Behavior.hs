@@ -5,9 +5,11 @@
 module RFP.Internal.Behavior (
     Behavior(..),
     attach,
+    attachK,
     gate,
     apply,
-    appendK
+    appendK,
+    makeBehavior
 ) where
 
     import           Control.Applicative  (Alternative (..), Applicative (..))
@@ -82,6 +84,11 @@ module RFP.Internal.Behavior (
                 trigger trigab (a, b)
             {-# INLINE go #-}
 
+    attachK :: forall m a b .
+                Applicative m
+                => Behavior m a
+                -> Kleisli m b (a, b)
+    attachK beh = Kleisli $ \b -> (\a -> (a, b)) <$> sample beh
 
     gate :: forall m a
             . Monad m
@@ -122,4 +129,7 @@ module RFP.Internal.Behavior (
                 a <- sample beh
                 runKleisli k a
 
+
+    makeBehavior :: forall m a . Monad m => Kleisli m () a -> Behavior m a
+    makeBehavior k = Behavior $ runKleisli k ()
 

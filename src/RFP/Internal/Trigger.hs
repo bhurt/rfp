@@ -84,3 +84,6 @@ module RFP.Internal.Trigger (
                 b <- runKleisli k a
                 trigger trig b
 
+    makeTrigger :: forall m a . Monad m =>
+                    Kleisli m a () -> Trigger m a
+    makeTrigger k = Trigger . runKleisli k

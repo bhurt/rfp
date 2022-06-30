@@ -7,6 +7,7 @@ module RFP.Internal.Hold (
     Hold(..),
     updater,
     cache,
+    cacheK,
     accumT,
     ValueNotifierKey,
     ValueNotifier(..),
@@ -52,6 +53,17 @@ module RFP.Internal.Hold (
             go upd = \ () -> do
                 y <- sample src
                 trigger upd y
+
+    cacheK :: forall m dom a b .
+                (Monad m
+                , Hold m
+                , MonadIO dom)
+                => b
+                -> Kleisli m a b
+                -> dom (Trigger m a, Behavior m b)
+    cacheK x k = do
+        (beh, upd) <- hold x
+        pure $ (beh, prependK k upd)
 
     accumT :: forall m dom a .
                 (Monad m

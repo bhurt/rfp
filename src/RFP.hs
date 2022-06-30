@@ -47,10 +47,13 @@ module RFP (
     , appendK
     , apply
     , attach
+    , attachK
     , cache
     , discardTrigger
     , filterTrigger
     , gate
+    , makeBehavior
+    , makeTrigger
     , performTrigger
     , performTriggerOnce
     , prependK
