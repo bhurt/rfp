@@ -34,7 +34,7 @@ module RFP.Internal.Hold (
         let go :: (a -> a) -> m ()
             go f = do
                 a <- sample beh
-                trigger trig (f a)
+                fire trig (f a)
             {-# INLINE go #-}
         pure (beh, Trigger go)
 
@@ -52,7 +52,7 @@ module RFP.Internal.Hold (
             go :: Trigger m a -> () -> m ()
             go upd = \ () -> do
                 y <- sample src
-                trigger upd y
+                fire upd y
 
     cacheK :: forall m dom a b .
                 (Monad m
@@ -63,7 +63,7 @@ module RFP.Internal.Hold (
                 -> dom (Trigger m a, Behavior m b)
     cacheK x k = do
         (beh, upd) <- hold x
-        pure $ (beh, prependK k upd)
+        pure $ (prependK k upd, beh)
 
     accumT :: forall m dom a .
                 (Monad m
@@ -80,8 +80,8 @@ module RFP.Internal.Hold (
             go beh upd = \f -> do
                 a' <- sample beh
                 let a = f a'
-                trigger upd a
-                trigger trig a
+                fire upd a
+                fire trig a
 
     newtype ValueNotifierKey = ValueNotifierKey Int
 
@@ -123,7 +123,7 @@ module RFP.Internal.Hold (
                     st2 = st {
                             nextKey = key + 1,
                             currTriggers = trigs2 }
-                trigger upd st2
+                fire upd st2
                 pure $ ValueNotifierKey key
 
             doRem :: Behavior m (ValueNotifierState m a)
@@ -133,12 +133,12 @@ module RFP.Internal.Hold (
                 st <- sample beh
                 let trigs2 = IntMap.delete key (currTriggers st)
                     st2 = st { currTriggers = trigs2 }
-                trigger upd st2
+                fire upd st2
 
             doNote :: Behavior m (ValueNotifierState m a)
                         -> Trigger m a
             doNote beh = Trigger $ \a -> do
                 trigs <- currTriggers <$> sample beh
-                mapM_ (\t -> trigger t a) $ IntMap.elems trigs
+                mapM_ (\t -> fire t a) $ IntMap.elems trigs
     
 

@@ -57,7 +57,7 @@ module RFP (
     , performTrigger
     , performTriggerOnce
     , prependK
-    , triggerBoth
+    , fireBoth
     , updater
 
     -- * Value Notifier

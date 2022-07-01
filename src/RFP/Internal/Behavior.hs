@@ -81,7 +81,7 @@ module RFP.Internal.Behavior (
             go :: b -> m ()
             go b = do
                 a :: a <- sample beha
-                trigger trigab (a, b)
+                fire trigab (a, b)
             {-# INLINE go #-}
 
     attachK :: forall m a b .
@@ -101,7 +101,7 @@ module RFP.Internal.Behavior (
             go a = do
                 x <- sample b
                 if x
-                then trigger m a
+                then fire m a
                 else pure ()
             {-# INLINE go #-}
 
@@ -115,7 +115,7 @@ module RFP.Internal.Behavior (
             go :: a -> m ()
             go a = do
                 f <- sample beh
-                trigger out (f a)
+                fire out (f a)
 
     appendK :: forall m a b .
                 Monad m
@@ -130,6 +130,6 @@ module RFP.Internal.Behavior (
                 runKleisli k a
 
 
-    makeBehavior :: forall m a . Monad m => Kleisli m () a -> Behavior m a
+    makeBehavior :: forall m a . Kleisli m () a -> Behavior m a
     makeBehavior k = Behavior $ runKleisli k ()
 

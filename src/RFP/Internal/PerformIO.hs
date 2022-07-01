@@ -27,7 +27,7 @@ module RFP.Internal.PerformIO (
             go :: IO a -> IO ()
             go ioa = do
                 a <- ioa
-                runMoment $ trigger fini a
+                runMoment $ fire fini a
             {-# INLINE go #-}
 
     performTriggerOnce :: forall m dom .
@@ -47,8 +47,8 @@ module RFP.Internal.PerformIO (
                 t <- sample g
                 if t
                 then do
-                    trigger upd False
-                    trigger performIO $ wrap upd act
+                    fire upd False
+                    fire performIO $ wrap upd act
                 else
                     pure ()
 
@@ -56,6 +56,6 @@ module RFP.Internal.PerformIO (
             wrap upd act = do
                 act
                 runMoment $ do
-                    trigger upd True
-                    trigger fini ()
+                    fire upd True
+                    fire fini ()
 

@@ -5,9 +5,10 @@
 module RFP.Internal.Trigger (
     Trigger(..),
     discardTrigger,
-    triggerBoth,
+    fireBoth,
     filterTrigger,
-    prependK
+    prependK,
+    makeTrigger
 ) where
 
     import           Control.Applicative                  (liftA2)
@@ -16,10 +17,10 @@ module RFP.Internal.Trigger (
     import qualified Data.Functor.Contravariant.Divisible as Div
     import           Data.Void                            (absurd)
 
-    newtype Trigger m a = Trigger { trigger :: a -> m () }
+    newtype Trigger m a = Trigger { fire :: a -> m () }
 
     instance CF.Contravariant (Trigger m) where
-        contramap f m = Trigger $ trigger m . f
+        contramap f m = Trigger $ fire m . f
 
     instance Applicative m => Div.Divisible (Trigger m) where
         divide f trigB trigC = Trigger go
@@ -28,8 +29,8 @@ module RFP.Internal.Trigger (
                     let (b, c) = f a in
                     liftA2
                         (\() () -> ())
-                        (trigger trigB b)
-                        (trigger trigC c)
+                        (fire trigB b)
+                        (fire trigC c)
 
         conquer = Trigger $ const (pure ())
 
@@ -39,11 +40,11 @@ module RFP.Internal.Trigger (
             where
                 go a =
                     case f a of
-                        Left b  -> trigger trigB b
-                        Right c -> trigger trigC c
+                        Left b  -> fire trigB b
+                        Right c -> fire trigC c
 
 
-    -- | A trigger that does nothing when triggered.
+    -- | A trigger that does nothing when fired.
     --
     -- Useful for situations where you need to have a trigger, but
     -- don't want to actually do anything in the trigger (for example,
@@ -58,12 +59,12 @@ module RFP.Internal.Trigger (
     -- Creates a single combined trigger than triggers both input
     -- triggers.
     --
-    triggerBoth :: Applicative m => Trigger m a -> Trigger m a -> Trigger m a
-    triggerBoth trig1 trig2 = Trigger $
+    fireBoth :: Applicative m => Trigger m a -> Trigger m a -> Trigger m a
+    fireBoth trig1 trig2 = Trigger $
                                 \a -> liftA2
                                         (\ () () -> ())
-                                        (trigger trig1 a)
-                                        (trigger trig2 a)
+                                        (fire trig1 a)
+                                        (fire trig2 a)
 
 
     -- | Filter a trigger.
@@ -72,7 +73,7 @@ module RFP.Internal.Trigger (
     filterTrigger :: Applicative m => (a -> Bool) -> Trigger m a -> Trigger m a
     filterTrigger f trig = Trigger $
                             \a -> if (f a)
-                                    then trigger trig a
+                                    then fire trig a
                                     else pure ()
 
     prependK :: forall m a b . Monad m =>
@@ -82,8 +83,7 @@ module RFP.Internal.Trigger (
             go :: a -> m ()
             go a = do
                 b <- runKleisli k a
-                trigger trig b
+                fire trig b
 
-    makeTrigger :: forall m a . Monad m =>
-                    Kleisli m a () -> Trigger m a
-    makeTrigger k = Trigger . runKleisli k
+    makeTrigger :: forall m a .  Kleisli m a () -> Trigger m a
+    makeTrigger = Trigger . runKleisli
