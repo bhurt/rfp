@@ -9,13 +9,58 @@ Chatwisely}
 
 \maketitle
 
+\begin{quotation}
+\textit{Sometimes, the elegant implementation is a function. Not a method. Not a class. Not a framework. Just a function.}
+\begin{flushright}
+-- John Carmack
+\end{flushright}
+\end{quotation}
+
+
 \begin{abstract}
-An abstract goes here.
+Functional Reactive Programming (FRP) has gained some traction in the
+functional programming community for the development of user interfaces.
+Adoption has been slowed, however, by pervaisve performance issues.  We
+propose a change to the definition of FRP, allowing a much simpler and
+more performant implementation.
 \end{abstract}
 
 \section{An Introduction to Functional Reactive Programming}
 
-More stuff goes here.
+A true introduction to Functional Reactive Programming is beyond the
+scope of this paper.  Instead, we present a sketch of the idea in the
+broadest strokes, mainly to lay down the terminology we use for the rest
+of the paper.
+
+The core idea of FRP is that we introduce two new types:
+\begin{description}
+\item[Behavior] A behavior is a value that can be sampled.  It's value
+can change continuosly over time, or change at discrete points in time.
+\item[Event] An event is something that can fire when a specific event
+happens- for example, on a mouse click or a key press.  The event
+carries a value when it is firing, for example the position of the mouse
+click or which key was pressed. 
+\end{description}
+
+In addition, FRP uses two monads:
+\begin{description}
+\item[Moment] A monad that represents a particular moment in time.
+Behaviors can be sampled for their value in that moment, and events can
+be firing (or not) in that moment.  Some FRP implementations (notably
+Reflex) split the moment monad up into multiple different monads (i.e.
+Reflex's \verb|PushM| and \verb|PullM| monads).
+\item[DOM Generator] A monad in which the UI is laid out.  We betray our
+HTML/Javascript bias by referencing the browser's DOM.  The DOM
+Generator monad is where the ``pure'' FRP objects (behaviors and events)
+interact with UI elements.  For example, the DOM Generator monad has
+functions which allow replacing one UI element tree with a different
+one when some event fires.
+\end{description}
+
+So FRP programs generally hold their current state in behaviors, and
+distribute changes via events.  A widget in an FRP program is then just
+a function that creates the UI element tree, and creates a local network
+of events and behaviors that controls and modifies that element tree.
 
 \section{The Unfulfilled Promise of FRP}
 
@@ -36,7 +81,7 @@ non-web frameworks like Flutter.
 The problem with this approach is that creating the virtual DOM and
 comparing it to the real DOM is always going to be a lot of work.  Most
 of which is unnecessary- especially if all you are doing is changing
-an icom from \verb|bell-outline| to \verb|bell-filled| and adding a
+an icon from \verb|bell-outline| to \verb|bell-filled| and adding a
 \verb|style="color: red;"| attribute.
 
 The promise of FRP is that we can skip the whole virtual DOM.  Instead,
@@ -121,13 +166,13 @@ producing values when things happen, they consume values.  They are
 co-events, the contravariant version of events.  We call co-events
 triggers.
  
-The key function of Triggers is \verb|trigger|:
+The key function of Triggers is \verb|fire|:
 
 \begin{verbatim}
-    trigger :: Trigger m a -> a -> m ()
+    fire :: Trigger m a -> a -> m ()
 \end{verbatim}
 
-The \verb|trigger| function fires the trigger with a given value.  We
+The \verb|fire| function fires the trigger with a given value.  We
 parameterize over the monad the trigger fires in to allow supporting
 different implementations.  In a multi-threaded environment, we might
 choose the STM monad\footnote{Actually, a transformer stack on top of
@@ -139,7 +184,7 @@ To implement Triggers, we consider the simplest possible implementation,
 a newtype:
 
 \begin{verbatim}
-    newtype Trigger m a = Trigger { trigger :: a -> m () }
+    newtype Trigger m a = Trigger { fire :: a -> m () }
 \end{verbatim}
 
 This is an ernormous simplification over the implementations of
@@ -190,10 +235,10 @@ Event is an input, we replace it with a Trigger as an output:
     hold :: a -> IO (Behavior m a, Trigger m a)
 \end{verbatim}
 
-Here, when the Trigger is triggered, the value supplied becomes the
+Here, when the Trigger is fired, the value supplied becomes the
 behavior's new state.  This implies that what we are doing here is just
 creating a variable of the right type.  Sampling the behavior is just
-reading the variable, and triggering the trigger with a new value just
+reading the variable, and firing the trigger with a new value just
 writes the variables.  Wrapping things up in a typeclass gives us:
 
 \begin{verbatim}
@@ -301,6 +346,10 @@ when not in a prerender:
                 isPrerender (Proxy :: Proxy m)
 
 \end{verbatim}
+
+\section{Dynamics}
+
+
 
 
 
